@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+SILENT_NEEDED=5
+was_active=0
+silent=0
+
+while true; do
+  if /usr/local/bin/controllers-active steam; then
+    was_active=1
+    silent=0
+  elif [ "$was_active" -eq 1 ]; then
+    silent=$((silent + 1))
+    if [ "$silent" -ge "$SILENT_NEEDED" ]; then
+      was_active=0
+      silent=0
+      logger -t steam-controller-watch "Steam Controller silent, checking other controllers"
+      if /usr/local/bin/controllers-active any; then
+        logger -t steam-controller-watch "Another controller is active, not suspending"
+      else
+        logger -t steam-controller-watch "No controllers active, suspending"
+        /usr/local/bin/suspend-with-tv-off
+      fi
+    fi
+  fi
+  sleep 1
+done

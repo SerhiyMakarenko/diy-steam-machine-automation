@@ -1,0 +1,10 @@
+[Unit]
+Description=Suspend when the Steam Controller powers off
+
+[Service]
+ExecStart=/usr/local/bin/steam-controller-watch
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
