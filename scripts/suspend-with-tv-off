@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+/home/<your_bazzite_user>/.local/share/tv-remote-control/bin/python3 \
+    /home/<your_bazzite_user>/.local/share/tv-remote-control/tv-control.py off
+systemctl suspend

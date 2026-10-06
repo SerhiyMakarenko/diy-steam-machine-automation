@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+sleep 5
+
+active=0
+for d in /dev/hidraw*; do
+    props=$(udevadm info -q property -n "$d" 2>/dev/null)
+    vendor=$(echo "$props" | grep '^ID_VENDOR_ID=' | cut -d= -f2)
+    model_id=$(echo "$props" | grep '^ID_MODEL_ID=' | cut -d= -f2)
+    if [ "$vendor" = "2dc8" ] && [ "$model_id" != "3109" ]; then
+        active=1
+        break
+    fi
+done
+
+if [ "$active" -eq 0 ]; then
+    /usr/local/bin/suspend-with-tv-off
+fi
