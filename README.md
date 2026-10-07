@@ -68,7 +68,7 @@ Format: `KEY=value`, one per line. The file is never executed: Python parses it,
 |                       | `8bitdo-suspend`                         | Started by udev when an 8BitDo controller drops off                            |
 |                       | `steam-controller-watch`                 | Service that polls the Steam Controller puck                                   |
 | `/etc/udev/rules.d`   | `70-usb-hub-wakeup.rules`                | Lets USB hubs wake the PC (how the 8BitDo wake works)                          |
-|                       | `72-8bitdo-suspend.rules`           | 8BitDo controller power off triggers `8bitdo-suspend` script                                       |
+|                       | `72-8bitdo-suspend.rules`                | 8BitDo dongle interface removal (controller off or on) runs `8bitdo-suspend`   |
 |                       | `73-steam-controller-wakeup.rules`       | Enables wake on the Steam Controller puck                                      |
 |                       | `75-bluetooth-no-wakeup.rules`           | Optional: stops the Bluetooth radio waking the PC                              |
 | `/etc/systemd/system` | `steam-controller-watch.service`         | Runs the watcher                                                               |
