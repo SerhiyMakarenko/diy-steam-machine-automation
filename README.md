@@ -8,10 +8,12 @@ My hardware setup consists of the following devices:
 - Valve Steam Controller;
 - 8BitDo Pro 3 Controller;
 - 2 x 8BitDo Ultimate 2.4G Controllers.
+
 The whole idea was to make all this hardware function like a game console. The main goal was that the event of powering on any of the controllers mentioned above is to:
 - Wake a PC;
 - Wake a TV;
 - Switch the TV to the HDMI input to which the PC is connected.
+
 The table below describes each step in detail.
 
 | Event                           | What happens                                                                                                                                 |
