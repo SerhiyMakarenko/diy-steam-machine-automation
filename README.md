@@ -139,3 +139,7 @@ journalctl -b | grep -i tv-control              # output of the post-resume TV-o
 * TV does nothing: run `sudo tv-control on` and read the message. "still holds the placeholder" means `/etc/steam-machine/steam-machine.conf` hasn't been edited yet. "HTTP 403" fails immediately and means a wrong PSK or IP control disabled on the TV. Network errors are retried for `TV_ON_ATTEMPTS`/`TV_OFF_ATTEMPTS` × `TV_RETRY_DELAY` seconds (about 30 s by default) before giving up.
 * Wake stops working: list wake state with `for d in /sys/bus/usb/devices/*; do [ -f $d/power/wakeup ] && echo "$(basename $d) $(cat $d/power/wakeup) $(cat $d/product 2>/dev/null)"; done`
 * Always suspend with `suspend-with-tv-off`, never a bare `systemctl suspend`: the network goes down as soon as suspend is requested, and the TV-off call would lose that race.
+
+## License
+
+This project is licensed under the [Apache License 2.0](LICENSE).
