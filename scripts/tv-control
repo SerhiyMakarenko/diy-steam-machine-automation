@@ -46,8 +46,8 @@ def load_conf(path):
             value = value[1:-1]
         conf[key.strip()] = value
     for key in ("TV_IP", "TV_PSK"):
-        if not conf.get(key):
-            sys.exit(f"tv-control: {key} is not set in {path}")
+        if not conf.get(key) or conf[key] == "change-me":
+            sys.exit(f"tv-control: set {key} in {path} (it still holds the placeholder)")
     return conf
 
 

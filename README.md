@@ -40,8 +40,8 @@ and reboot.
 
 ## Configuring the TV
 On the TV (one time, the setting survives the PC being reinstalled): `Settings -> Network ->
-IP control -> Authentication -> "Normal and Pre-Shared Key"`, set the key to `TV_PSK`, and
-keep Remote start on "Powered on by apps".
+IP control -> Authentication -> "Normal and Pre-Shared Key"`, choose a key on the TV, then use the same value as `TV_PSK` in the config, and
+keep Remote start on "Powered on by apps". After `sudo make install`, run `sudoedit /etc/steam-machine/steam-machine.conf` and set `TV_IP` and `TV_PSK` (the repo ships placeholders).
 
 ## Settings
 
@@ -54,9 +54,9 @@ The file `/etc/steam-machine/steam-machine.conf` is installed once, never overwr
 | `TV_ON_ATTEMPTS`, `TV_OFF_ATTEMPTS`, `TV_RETRY_DELAY`, `TV_TIMEOUT` | Retry budget for power commands                                 |
 | `TV_HDMI_ATTEMPTS`, `TV_HDMI_DELAY`                                 | Retry budget for the input switch                               |
 | `SUSPEND_DELAY`                                                     | Seconds the 8BitDo path waits before deciding                   |
-| `STEAM_SILENT_PROBES`                                               | Silent \\\~2 s probes before the Steam Controller counts as off |
+| `STEAM_SILENT_PROBES`                                               | Silent ~2 s probes before the Steam Controller counts as off    |
 
-Format: `KEY=value`, one per line. Read by both bash and Python, so: no spaces around "=", no variable expansion, and quote any value containing spaces or shell characters ($ \` " ' \ ; & |). The file contains the PSK secret, so the permissions were to `root:wheel 0640`. Edit it with `sudo`.
+Format: `KEY=value`, one per line. The file is never executed: Python parses it, and the shell scripts read only `SUSPEND_DELAY` and `STEAM_SILENT_PROBES` with `sed`, so special characters in `TV_PSK` need no quoting. It contains the PSK secret, so the installer sets its permissions to `root:wheel 0640`. Edit it with `sudo`.
 
 ## What Files Get Installed
 
@@ -67,8 +67,8 @@ Format: `KEY=value`, one per line. Read by both bash and Python, so: no spaces a
 |                       | `suspend-with-tv-off`                    | TV off first, then suspend (the order matters)                                 |
 |                       | `8bitdo-suspend`                         | Started by udev when an 8BitDo controller drops off                            |
 |                       | `steam-controller-watch`                 | Service that polls the Steam Controller puck                                   |
-| `/etc/udev/rules.d`   | `70-usb-hub-wakeup.rules`                | Let USB hubs wake the PC (how the 8BitDo wake works)                          |
-|                       | `72-8bitdo-suspend.rules`           | 8BitDo removal triggers `8bitdo-suspend`                                       |
+| `/etc/udev/rules.d`   | `70-usb-hub-wakeup.rules`                | Lets USB hubs wake the PC (how the 8BitDo wake works)                          |
+|                       | `72-8bitdo-suspend.rules`           | 8BitDo controller power off triggers `8bitdo-suspend` script                                       |
 |                       | `73-steam-controller-wakeup.rules`       | Enables wake on the Steam Controller puck                                      |
 |                       | `75-bluetooth-no-wakeup.rules`           | Optional: stops the Bluetooth radio waking the PC                              |
 | `/etc/systemd/system` | `steam-controller-watch.service`         | Runs the watcher                                                               |
@@ -84,12 +84,12 @@ Hardware IDs are constants at the top of `scripts/controllers-active` and in the
 Change them there if you swap controllers.
 
 ### Scripts
-The script `/usr/local/bin/tv-control` is switching a Sony Bravia TV on/off and selecting an HDMI input. Talks to the TV’s IP Control REST API using Pre-Shared-Key authentication. Standard library only: no pip, no virtualenv.
+The script `/usr/local/bin/tv-control` switches a Sony Bravia TV on or off and selects an HDMI input. It talks to the TV’s IP Control REST API using Pre-Shared-Key authentication. Standard library only: no pip, no virtualenv.
 
 - `tv-control on`: power on, then switch to the configured HDMI port;
 - `tv-control off`: power off the TV;
 - `tv-control hdmi`: only switch to the configured HDMI port.
-Settings are read from the `/etc/steam-machine/steam-machine.conf` configuration file (override the path with the STEAM_MACHINE_CONFIG environment variable).
+Settings are read from the `/etc/steam-machine/steam-machine.conf` configuration file (override the path with the `STEAM_MACHINE_CONFIG` environment variable).
 
 The script `/usr/local/bin/controllers-active` reports whether any gamepad is currently powered on. Here are the supported arguments:
 - `controllers-active [any|steam|8bitdo]`: if `exit 0`, then a controller is on; if `exit 1`, then none of them are connected.
@@ -136,6 +136,6 @@ sudo controllers-active steam; echo $?          # 0 = on, 1 = off
 journalctl -b | grep -i tv-control              # output of the post-resume TV-on
 ```
 
-* TV does nothing: `tv-control` fails fast with the HTTP status. 403 means a wrong PSK or IP control disabled on the TV.
+* TV does nothing: run `sudo tv-control on` and read the message. "still holds the placeholder" means `/etc/steam-machine/steam-machine.conf` hasn't been edited yet. "HTTP 403" fails immediately and means a wrong PSK or IP control disabled on the TV. Network errors are retried for `TV_ON_ATTEMPTS`/`TV_OFF_ATTEMPTS` × `TV_RETRY_DELAY` seconds (about 30 s by default) before giving up.
 * Wake stops working: list wake state with `for d in /sys/bus/usb/devices/*; do [ -f $d/power/wakeup ] && echo "$(basename $d) $(cat $d/power/wakeup) $(cat $d/product 2>/dev/null)"; done`
 * Always suspend with `suspend-with-tv-off`, never a bare `systemctl suspend`: the network goes down as soon as suspend is requested, and the TV-off call would lose that race.

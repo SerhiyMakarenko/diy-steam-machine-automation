@@ -2,9 +2,15 @@
 
 SCRIPT_PATH=$(dirname "$(readlink -f "$0")")
 CONFIG=${STEAM_MACHINE_CONFIG:-/etc/steam-machine/steam-machine.conf}
-# shellcheck disable=SC1090
-[ -r "$CONFIG" ] && . "$CONFIG"
-SILENT_NEEDED=${STEAM_SILENT_PROBES:-5}
+
+conf_get() {
+    local V
+    V=$(sed -n "s/^$1[[:space:]]*=[[:space:]]*\(.*[^[:space:]]\)[[:space:]]*\$/\1/p" "$CONFIG" 2>/dev/null | tail -n1)
+    V=${V#[\"\']}; V=${V%[\"\']}
+    echo "${V:-$2}"
+}
+
+SILENT_NEEDED=$(conf_get STEAM_SILENT_PROBES 5)
 
 log() { logger -t steam-controller-watch "$*" 2>/dev/null || echo "$*" >&2; }
 
