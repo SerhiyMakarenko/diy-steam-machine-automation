@@ -92,11 +92,11 @@ purge: uninstall
 
 check:
 	@echo "==> syntax"
-	@for f in $$(grep -l '^#!.*bash' bin/*); do bash -n $$f || exit 1; done
-	@python3 -m py_compile bin/tv-control && rm -rf bin/__pycache__
-	@if command -v shellcheck >/dev/null 2>&1; then echo "==> shellcheck"; shellcheck bin/controllers-active bin/suspend-with-tv-off bin/8bitdo-suspend bin/steam-controller-watch; else echo "(shellcheck not installed, skipped)"; fi
+	@for f in $$(grep -l '^#!.*bash' scripts/*); do bash -n $$f || exit 1; done
+	@python3 -m py_compile scripts/tv-control && rm -rf scripts/__pycache__
+	@if command -v shellcheck >/dev/null 2>&1; then echo "==> shellcheck"; shellcheck scripts/controllers-active scripts/suspend-with-tv-off scripts/8bitdo-suspend scripts/steam-controller-watch; else echo "(shellcheck not installed, skipped)"; fi
 	@echo "==> hardcoded user paths"
-	@if grep -rnE '/home/|/var/home/|\.local/share|~/' bin config systemd udev; then echo "FOUND hardcoded paths above"; exit 1; else echo "none"; fi
+	@if grep -rnE '/home/|/var/home/|\.local/share|~/' scripts config systemd udev; then echo "FOUND hardcoded paths above"; exit 1; else echo "none"; fi
 
 diff:
 	@rm -rf $(STAGE)

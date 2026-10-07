@@ -25,7 +25,7 @@ The table below describes each step in detail.
 ## Installation
 Here are the commands you need to run to perform the initial installation on a fresh Bazzite system.
 ```bash
-git clone https://github.com/SerhiyMakarenko/theme-marfa-for-microblog.git && cd steam-machine-automation
+git clone https://github.com/SerhiyMakarenko/diy-steam-machine-automation.git && cd diy-steam-machine-automation
 sudo make install
 ```
 Small note: `make` must be available. Check with the following command:
@@ -40,7 +40,7 @@ and reboot.
 
 ## Configuring the TV
 On the TV (one time, the setting survives the PC being reinstalled): `Settings -> Network ->
-IP control -> Authentication -> "Normal and Pre-Shared Key"`, set the key to`TV_PSK`, and
+IP control -> Authentication -> "Normal and Pre-Shared Key"`, set the key to `TV_PSK`, and
 keep Remote start on "Powered on by apps".
 
 ## Settings
@@ -56,9 +56,9 @@ The file `/etc/steam-machine/steam-machine.conf` is installed once, never overwr
 | `SUSPEND_DELAY`                                                     | Seconds the 8BitDo path waits before deciding                   |
 | `STEAM_SILENT_PROBES`                                               | Silent \\\~2 s probes before the Steam Controller counts as off |
 
-Format: `KEY=value`, one per line. Read by both bash and Python, so: no spaces around "=", no variable expansion, and quote any value containing spaces or shell characters ($ \` " ' \ ; & |). The file contains the PSK secret, so set permissions to `root:wheel 0640`. Edit it with `sudo`.
+Format: `KEY=value`, one per line. Read by both bash and Python, so: no spaces around "=", no variable expansion, and quote any value containing spaces or shell characters ($ \` " ' \ ; & |). The file contains the PSK secret, so the permissions were to `root:wheel 0640`. Edit it with `sudo`.
 
-## What Files Gets Installed
+## What Files Get Installed
 
 | Path                  | File                                     | Role                                                                           |
 | --------------------- | ---------------------------------------- | ------------------------------------------------------------------------------ |
@@ -67,8 +67,8 @@ Format: `KEY=value`, one per line. Read by both bash and Python, so: no spaces a
 |                       | `suspend-with-tv-off`                    | TV off first, then suspend (the order matters)                                 |
 |                       | `8bitdo-suspend`                         | Started by udev when an 8BitDo controller drops off                            |
 |                       | `steam-controller-watch`                 | Service that polls the Steam Controller puck                                   |
-| `/etc/udev/rules.d`   | `70-usb-hub-wakeup.rules`                | Lets USB hubs wake the PC (how the 8BitDo wake works)                          |
-|                       | `72-8bitdo-idle-suspend.rules`           | 8BitDo removal triggers `8bitdo-suspend`                                       |
+| `/etc/udev/rules.d`   | `70-usb-hub-wakeup.rules`                | Let USB hubs wake the PC (how the 8BitDo wake works)                          |
+|                       | `72-8bitdo-suspend.rules`           | 8BitDo removal triggers `8bitdo-suspend`                                       |
 |                       | `73-steam-controller-wakeup.rules`       | Enables wake on the Steam Controller puck                                      |
 |                       | `75-bluetooth-no-wakeup.rules`           | Optional: stops the Bluetooth radio waking the PC                              |
 | `/etc/systemd/system` | `steam-controller-watch.service`         | Runs the watcher                                                               |
@@ -77,7 +77,7 @@ Format: `KEY=value`, one per line. Read by both bash and Python, so: no spaces a
 Scripts find each other relative to their own location, and the units and rules are
 rendered with the install prefix, so `make install PREFIX=/opt/x` works too.
 
-Hardware IDs are constants at the top of `bin/controllers-active` and in the `udev/` rules:
+Hardware IDs are constants at the top of `scripts/controllers-active` and in the `udev/` rules:
 - 8BitDo `2dc8` (idle product `3109`);
 - Steam Controller puck `28de:1304`;
 - Bluetooth radio `8087:0029`.
@@ -103,9 +103,9 @@ The script `/usr/local/bin/8bitdo-suspend` is started by udev through systemd-ru
 The script `/usr/local/bin/steam-controller-watch` is a long-running service: suspend the PC and TV when the Steam Controller powers off. The Steam Controller Puck never re-enumerates on USB, so udev cannot see the controller turning off. Instead, we poll: once the controller has been silent for `STEAM_SILENT_PROBES` consecutive probes after being active, treat it as off. Only an `active -> silent` transition counts, so booting or resuming with the controller already off never triggers a suspend.
 
 ### udev Rules
-The udev rule `/etc/udev/rules.d/70-usb-hub-wakeup.rules` let USB root hubs and hubs wake the PC from suspend. The 8BitDo dongles expose no wakeup attribute of their own; waking the PC works through their hub’s connect/disconnect events, so the hubs themselves must be allowed to wake it.
+The udev rule `/etc/udev/rules.d/70-usb-hub-wakeup.rules` lets USB root hubs and hubs wake the PC from suspend. The 8BitDo dongles expose no wakeup attribute of their own; waking the PC works through their hub’s connect/disconnect events, so the hubs themselves must be allowed to wake it.
 
-The udev rule `/etc/udev/rules.d/72-8bitdo-idle-suspend.rules` re-checks before running the `8bitdo-suspend` script because the 8BitDo dongle’s hidraw interface disappears when its controller powers off and also when it powers on.
+The udev rule `/etc/udev/rules.d/72-8bitdo-suspend.rules` re-checks before running the `8bitdo-suspend` script because the 8BitDo dongle’s hidraw interface disappears when its controller powers off and also when it powers on.
 
 The udev rule `/etc/udev/rules.d/73-steam-controller-wakeup.rules` enables USB wakeup for the Steam Controller Puck so a button press on the controller can wake the PC because it ships with USB wakeup disabled.
 
@@ -136,9 +136,6 @@ sudo controllers-active steam; echo $?          # 0 = on, 1 = off
 journalctl -b | grep -i tv-control              # output of the post-resume TV-on
 ```
 
-* TV does nothing: `tv-control` fails fast with the HTTP status. 403 means a wrong PSK or
-  IP control disabled on the TV.
-* Wake stops working: list wake state with
-  `for d in /sys/bus/usb/devices/*; do [ -f $d/power/wakeup ] && echo "$(basename $d) $(cat $d/power/wakeup) $(cat $d/product 2>/dev/null)"; done`
-* Always suspend with `suspend-with-tv-off`, never a bare `systemctl suspend`: the network goes
-  down as soon as suspend is requested, and the TV-off call would lose that race.
+* TV does nothing: `tv-control` fails fast with the HTTP status. 403 means a wrong PSK or IP control disabled on the TV.
+* Wake stops working: list wake state with `for d in /sys/bus/usb/devices/*; do [ -f $d/power/wakeup ] && echo "$(basename $d) $(cat $d/power/wakeup) $(cat $d/product 2>/dev/null)"; done`
+* Always suspend with `suspend-with-tv-off`, never a bare `systemctl suspend`: the network goes down as soon as suspend is requested, and the TV-off call would lose that race.
