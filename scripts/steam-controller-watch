@@ -1,25 +1,32 @@
 #!/usr/bin/env bash
-SILENT_NEEDED=5
-was_active=0
-silent=0
 
+SCRIPT_PATH=$(dirname "$(readlink -f "$0")")
+CONFIG=${STEAM_MACHINE_CONFIG:-/etc/steam-machine/steam-machine.conf}
+# shellcheck disable=SC1090
+[ -r "$CONFIG" ] && . "$CONFIG"
+SILENT_NEEDED=${STEAM_SILENT_PROBES:-5}
+
+log() { logger -t steam-controller-watch "$*" 2>/dev/null || echo "$*" >&2; }
+
+WAS_ACTIVE=0
+SILENT=0
 while true; do
-  if /usr/local/bin/controllers-active steam; then
-    was_active=1
-    silent=0
-  elif [ "$was_active" -eq 1 ]; then
-    silent=$((silent + 1))
-    if [ "$silent" -ge "$SILENT_NEEDED" ]; then
-      was_active=0
-      silent=0
-      logger -t steam-controller-watch "Steam Controller silent, checking other controllers"
-      if /usr/local/bin/controllers-active any; then
-        logger -t steam-controller-watch "Another controller is active, not suspending"
-      else
-        logger -t steam-controller-watch "No controllers active, suspending"
-        /usr/local/bin/suspend-with-tv-off
-      fi
+    if "$SCRIPT_PATH/controllers-active" steam; then
+        WAS_ACTIVE=1
+        SILENT=0
+    elif [ "$WAS_ACTIVE" -eq 1 ]; then
+        SILENT=$((SILENT + 1))
+        if [ "$SILENT" -ge "$SILENT_NEEDED" ]; then
+            WAS_ACTIVE=0
+            SILENT=0
+            log "Steam Controller silent, checking other controllers"
+            if "$SCRIPT_PATH/controllers-active" any; then
+                log "another controller is still on, not suspending"
+            else
+                log "no controllers on, suspending"
+                "$SCRIPT_PATH/suspend-with-tv-off"
+            fi
+        fi
     fi
-  fi
-  sleep 1
+    sleep 1
 done

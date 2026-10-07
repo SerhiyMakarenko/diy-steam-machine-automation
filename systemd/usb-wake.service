@@ -1,9 +1,0 @@
-[Unit]
-Description=Enable USB wakeup
-
-[Service]
-Type=oneshot
-ExecStart=/bin/sh -c 'for f in /sys/bus/usb/devices/*/power/wakeup; do echo enabled > "$f"; done'
-
-[Install]
-WantedBy=multi-user.target

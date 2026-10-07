@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
-/home/<your_bazzite_user>/.local/share/tv-remote-control/bin/python3 \
-    /home/<your_bazzite_user>/.local/share/tv-remote-control/tv-control.py off
-systemctl suspend
+
+SCRIPT_PATH=$(dirname "$(readlink -f "$0")")
+
+"$SCRIPT_PATH/tv-control" off || logger -t suspend-with-tv-off "TV power-off failed; suspending anyway"
+exec systemctl suspend

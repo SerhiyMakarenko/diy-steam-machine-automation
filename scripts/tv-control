@@ -1,0 +1,129 @@
+#!/usr/bin/env python3
+
+import http.client
+import json
+import os
+import sys
+import time
+import urllib.error
+import urllib.request
+from datetime import datetime
+
+CONFIG_PATH = os.environ.get("STEAM_MACHINE_CONFIG", "/etc/steam-machine/steam-machine.conf")
+
+DEFAULTS = {
+    "TV_PORT": "80",
+    "TV_HDMI_PORT": "1",
+    "TV_TIMEOUT": "5",
+    "TV_RETRY_DELAY": "3",
+    "TV_ON_ATTEMPTS": "10",
+    "TV_OFF_ATTEMPTS": "10",
+    "TV_HDMI_ATTEMPTS": "5",
+    "TV_HDMI_DELAY": "2",
+}
+
+
+def log(message):
+    print(f"[{datetime.now():%Y-%m-%d %H:%M:%S}] {message}", flush=True)
+
+
+def load_conf(path):
+    conf = dict(DEFAULTS)
+    try:
+        with open(path, encoding="utf-8") as handle:
+            lines = handle.read().splitlines()
+    except FileNotFoundError:
+        sys.exit(f"tv-control: config file not found: {path}")
+    except PermissionError:
+        sys.exit(f"tv-control: cannot read {path} (try: sudo tv-control ...)")
+    for line in lines:
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        value = value.strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
+            value = value[1:-1]
+        conf[key.strip()] = value
+    for key in ("TV_IP", "TV_PSK"):
+        if not conf.get(key):
+            sys.exit(f"tv-control: {key} is not set in {path}")
+    return conf
+
+
+def call(conf, service, method, params):
+    """POST one JSON-RPC request to the TV and return the decoded reply."""
+    url = f"http://{conf['TV_IP']}:{conf['TV_PORT']}/sony/{service}"
+    body = json.dumps({"method": method, "params": params, "id": 1, "version": "1.0"}).encode()
+    request = urllib.request.Request(
+        url,
+        data=body,
+        method="POST",
+        headers={"Content-Type": "application/json", "X-Auth-PSK": conf["TV_PSK"]},
+    )
+    with urllib.request.urlopen(request, timeout=float(conf["TV_TIMEOUT"])) as reply:
+        text = reply.read().decode("utf-8", "replace")
+    try:
+        return json.loads(text)
+    except ValueError:
+        return {}
+
+
+def attempt(what, attempts, delay, send, retry_api_errors=False):
+    """Run send() up to `attempts` times, sleeping `delay` seconds between tries.
+
+    Network errors and HTTP 5xx are retried; HTTP 4xx (wrong PSK, IP control
+    disabled) fails immediately. An error object inside a normal HTTP 200 reply
+    is retried only when retry_api_errors is set (used for input switching,
+    which fails with an API error while the TV is still booting).
+    """
+    problem = "no attempts configured"
+    for number in range(1, attempts + 1):
+        try:
+            reply = send()
+            error = reply.get("error") if isinstance(reply, dict) else None
+            if not error:
+                log(f"{what}: ok (attempt {number})")
+                return
+            problem = f"TV reported an API error: {error}"
+            if not retry_api_errors:
+                log(f"{what}: {problem} - not retrying")
+                return
+        except urllib.error.HTTPError as exc:
+            problem = f"HTTP {exc.code} {exc.reason}"
+            if 400 <= exc.code < 500:
+                sys.exit(f"tv-control: {what}: {problem} (check TV_PSK and the TV's IP control settings)")
+        except (urllib.error.URLError, http.client.HTTPException, OSError) as exc:
+            problem = str(getattr(exc, "reason", exc))
+        log(f"{what}: attempt {number}/{attempts} failed: {problem}")
+        if number < attempts:
+            time.sleep(delay)
+    sys.exit(f"tv-control: {what}: giving up after {attempts} attempts: {problem}")
+
+
+def main(argv):
+    if len(argv) != 2 or argv[1] not in ("on", "off", "hdmi"):
+        sys.exit("usage: tv-control on|off|hdmi")
+    action = argv[1]
+    conf = load_conf(CONFIG_PATH)
+
+    if action in ("on", "off"):
+        attempt(
+            f"power {action}",
+            int(conf[f"TV_{action.upper()}_ATTEMPTS"]),
+            float(conf["TV_RETRY_DELAY"]),
+            lambda: call(conf, "system", "setPowerStatus", [{"status": action == "on"}]),
+        )
+    if action in ("on", "hdmi"):
+        uri = f"extInput:hdmi?port={conf['TV_HDMI_PORT']}"
+        attempt(
+            f"select {uri}",
+            int(conf["TV_HDMI_ATTEMPTS"]),
+            float(conf["TV_HDMI_DELAY"]),
+            lambda: call(conf, "avContent", "setPlayContent", [{"uri": uri}]),
+            retry_api_errors=True,
+        )
+
+
+if __name__ == "__main__":
+    main(sys.argv)

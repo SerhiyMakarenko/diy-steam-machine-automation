@@ -1,0 +1,2 @@
+[Service]
+ExecStopPost=/usr/bin/systemd-run --no-block @BINDIR@/tv-control on

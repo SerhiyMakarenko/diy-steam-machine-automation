@@ -1,34 +1,42 @@
 #!/usr/bin/env bash
-mode=${1:-any}
+
+EIGHT_BITDO_VENDOR=2dc8
+EIGHT_BITDO_IDLE_PRODUCT=3109
+STEAM_INPUT_DIR=${STEAM_INPUT_DIR:-/dev/input/by-id}
+STEAM_PROBE_SECONDS=${STEAM_PROBE_SECONDS:-1}
 
 steam_active() {
-  local tmp dev f total=0
-  tmp=$(mktemp -d) || return 1
-  for dev in /dev/input/by-id/usb-Valve_Software_Steam_Controller_Puck_*-if0[2-6]-hidraw; do
-    [ -e "$dev" ] || continue
-    ( timeout 1 cat "$dev" | wc -c > "$tmp/$(basename "$dev")" ) &
-  done
-  wait
-  for f in "$tmp"/*; do
-    [ -f "$f" ] && total=$((total + $(cat "$f")))
-  done
-  rm -rf "$tmp"
-  [ "$total" -gt 0 ]
+    local TMP DEV F TOTAL=0
+    TMP=$(mktemp -d) || return 1
+    for DEV in "$STEAM_INPUT_DIR"/usb-Valve_Software_Steam_Controller_Puck_*-if0[2-6]-hidraw; do
+        [ -e "$DEV" ] || continue
+        ( timeout "$STEAM_PROBE_SECONDS" cat "$DEV" 2>/dev/null | wc -c > "$TMP/$(basename "$DEV")" ) &
+    done
+    wait
+    for F in "$TMP"/*; do
+        [ -f "$F" ] && TOTAL=$((TOTAL + $(cat "$F")))
+    done
+    rm -rf "$TMP"
+    [ "$TOTAL" -gt 0 ]
 }
 
 bitdo_active() {
-  local d props vendor model
-  for d in /dev/hidraw*; do
-    props=$(udevadm info -q property -n "$d" 2>/dev/null) || continue
-    vendor=$(sed -n 's/^ID_VENDOR_ID=//p' <<<"$props")
-    model=$(sed -n 's/^ID_MODEL_ID=//p' <<<"$props")
-    [ "$vendor" = "2dc8" ] && [ "$model" != "3109" ] && return 0
-  done
-  return 1
+    local D PROPS VENDOR MODEL
+    for D in /dev/hidraw*; do
+        [ -e "$D" ] || continue
+        PROPS=$(udevadm info -q property -n "$D" 2>/dev/null) || continue
+        VENDOR=$(sed -n 's/^ID_VENDOR_ID=//p' <<<"$PROPS")
+        MODEL=$(sed -n 's/^ID_MODEL_ID=//p' <<<"$PROPS")
+        if [ "$VENDOR" = "$EIGHT_BITDO_VENDOR" ] && [ "$MODEL" != "$EIGHT_BITDO_IDLE_PRODUCT" ]; then
+            return 0
+        fi
+    done
+    return 1
 }
 
-case "$mode" in
-  steam)  steam_active ;;
-  8bitdo) bitdo_active ;;
-  *)      bitdo_active || steam_active ;;
+case "${1:-any}" in
+    steam)  steam_active ;;
+    8bitdo) bitdo_active ;;
+    any)    bitdo_active || steam_active ;;
+    *)      echo "usage: controllers-active [any|steam|8bitdo]" >&2; exit 2 ;;
 esac

@@ -1,3 +1,11 @@
 #!/usr/bin/env bash
-sleep 5
-/usr/local/bin/controllers-active any || /usr/local/bin/suspend-with-tv-off
+
+SCRIPT_PATH=$(dirname "$(readlink -f "$0")")
+CONFIG=${STEAM_MACHINE_CONFIG:-/etc/steam-machine/steam-machine.conf}
+# shellcheck disable=SC1090
+[ -r "$CONFIG" ] && . "$CONFIG"
+
+sleep "${SUSPEND_DELAY:-5}"
+if ! "$SCRIPT_PATH/controllers-active" any; then
+    exec "$SCRIPT_PATH/suspend-with-tv-off"
+fi

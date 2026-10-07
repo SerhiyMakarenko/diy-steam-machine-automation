@@ -1,0 +1,10 @@
+[Unit]
+Description=Suspend the PC and TV when the Steam Controller powers off
+
+[Service]
+ExecStart=@BINDIR@/steam-controller-watch
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

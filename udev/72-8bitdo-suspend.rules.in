@@ -1,0 +1,1 @@
+ACTION=="remove", SUBSYSTEM=="hidraw", ENV{ID_VENDOR_ID}=="2dc8", RUN+="/usr/bin/systemd-run --no-block @BINDIR@/8bitdo-suspend"
