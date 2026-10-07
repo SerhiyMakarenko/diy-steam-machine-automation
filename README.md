@@ -114,7 +114,7 @@ The systemd unit `/etc/systemd/system/steam-controller-watch.service` suspends t
 
 The file `/etc/systemd/system/systemd-suspend.service.d/tv-wake.conf` is a drop-in for systemd-suspend.service: switch the TV on once the PC has resumed. Detached `--no-block` so the TV’s retry loop is not cut off by systemd’s stop-post timeout; the network needs ~12 s to come back after resume.
 
-## Make targets
+## Make Targets
 
 | Target                                        | What it does                                                 |
 | --------------------------------------------- | ------------------------------------------------------------ |
@@ -122,7 +122,6 @@ The file `/etc/systemd/system/systemd-suspend.service.d/tv-wake.conf` is a drop-
 | `make diff`                                   | Show how the repo differs from what is installed             |
 | `make check`                                  | Syntax checks and a scan for hardcoded user paths            |
 | `sudo make uninstall` / `purge`               | Remove the install (`purge` also deletes the config)         |
-| `sudo make legacy-clean`                      | One-off cleanup of the older hand-made version of this setup |
 | `make install DESTDIR=/tmp/stage CONF_GROUP=` | Staged install, no root, nothing activated                   |
 
 ## Troubleshooting
